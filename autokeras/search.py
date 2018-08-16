@@ -131,11 +131,17 @@ class BayesianSearcher:
         pickle_to_file(graph, os.path.join(self.path, str(model_id) + '.h5'))
 
         # Update best_model text file
-
         if self.verbose:
-            print('Model ID:', model_id)
-            print('Loss:', loss)
-            print('Metric Value:', metric_value)
+            idx = ['model_id', 'loss', 'accuracy']
+            header = ['Model ID', 'Loss', 'Accuracy']
+            line = '|'.join(x.center(24) for x in header)
+            print('+' + '-' * len(line) + '+')
+            print('|' + line + '|')
+            for i, r in enumerate(self.history):
+                print('+' + '-' * len(line) + '+')
+                line = '|'.join(str(r[x]).center(24) for x in idx)
+                print('|' + line + '|')
+            print('+' + '-' * len(line) + '+')
 
         ret = {'model_id': model_id, 'loss': loss, 'metric_value': metric_value}
         self.history.append(ret)
@@ -152,7 +158,7 @@ class BayesianSearcher:
 
     def init_search(self):
         if self.verbose:
-            print('Initializing search.')
+            print('\nInitializing search.')
         graph = DefaultClassifierGenerator(self.n_classes,
                                            self.input_shape).generate(self.default_model_len,
                                                                       self.default_model_width)
@@ -177,7 +183,10 @@ class BayesianSearcher:
         # Start the new process for training.
         graph, father_id, model_id = self.training_queue.pop(0)
         if self.verbose:
-            print('Training model ', model_id)
+            print('\n')
+            print('╒' + '=' * 46 + '╕')
+            print('|' + 'Training model {}'.format(model_id).center(46) + '|')
+            print('╘' + '=' * 46 + '╛')
         multiprocessing.set_start_method('spawn', force=True)
         pool = multiprocessing.Pool(1)
         train_results = pool.map_async(train, [(graph, train_data, test_data, self.trainer_args,
@@ -268,8 +277,17 @@ class BayesianSearcher:
             raise TimeoutError
         nm_graph = self.load_model_by_id(father_id)
         if self.verbose:
-            print('Father ID: ', father_id)
-            print(target_graph.operation_history)
+            cell_size = [24, 49]
+            header = ['Father Model ID', 'Added Operation']
+            line = '|'.join(str(x).center(cell_size[i]) for i, x in enumerate(header))
+            print('+' + '-' * len(line) + '+')
+            print('|' + line + '|')
+            print('+' + '-' * len(line) + '+')
+
+            r = [father_id, target_graph.operation_history[0]]
+            line = '|'.join(str(x).center(cell_size[i]) for i, x in enumerate(r))
+            print('|' + line + '|')
+            print('+' + '-' * len(line) + '+')
         for args in target_graph.operation_history:
             getattr(nm_graph, args[0])(*list(args[1:]))
         return nm_graph, father_id
